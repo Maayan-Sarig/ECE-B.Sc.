@@ -1,0 +1,43 @@
+#include <msp430xG46x.h>     ; define controlled include file
+;-------------------------------------------------------------------------------
+          ORG 1100h
+;-------------------------------------------------------------------------------
+Id1       DW    0,6,5,1,1,7,7,6         ; 206511776
+Id2       DW    0,7,1,8,0,5,7,1         ; 207180571
+IDsize    DW    8
+num       DS16  1
+;-------------------------------------------------------------------------------
+          RSEG  CSTACK
+          RSEG  CODE                        ; ORG   0x3100 - place program in 'CODE' segment in to Flash memory
+;-------------------------------------------------------------------------------                    
+Main      MOV   # SFE(CSTACK) , SP
+          MOV   #Id1 , R4
+          MOV   #Id2 , R5
+          MOV   IDsize , R6
+          CLR   R7
+          CALL  #Fillstack
+          MOV   R7 ,num 
+LP        JMP   LP
+          
+Fillstack CMP   #0 , R6
+          JZ    finish
+          PUSH  @R4+
+          PUSH  @R5+
+          DEC   R6
+          CALL  #Fillstack
+          POP   R4
+          POP   R5
+          CMP   R4 , R5
+          JGE   SIM
+          ADD   R4 , R7
+          JMP   finish
+SIM       ADD   R5 , R7
+          JMP   finish
+finish    RET         
+          
+;-------------------------------------------------------------------------------
+          COMMON  INTVEC                  ; Interrupt Vectors
+;-------------------------------------------------------------------------------
+          ORG     RESET_VECTOR            ; POR, ext. Reset
+          DW      Main
+          END

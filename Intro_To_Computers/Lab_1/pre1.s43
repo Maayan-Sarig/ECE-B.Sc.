@@ -1,0 +1,62 @@
+#include <msp430xG46x.h>     ; define controlled include file
+;-------------------------------------------------------------------------------
+          ORG 1100h
+;-------------------------------------------------------------------------------
+Id1       DW    0,6,5,1,1,7,7,6         ; 206511776
+Id2       DW    0,7,1,8,0,5,7,1         ; 207180571
+Len       DW    8 
+;-------------------------------------------------------------------------------
+          RSEG   CODE                        ; ORG   0x3100 - place program in 'CODE' segment in to Flash memory
+;-------------------------------------------------------------------------------                    
+Main      CLR   R4                      ; Clear R4 for the finall ansuer
+          MOV   #Id1 , R5               ; R5 holds adrres of first obj of the arrey ID1
+          MOV   #Id2 , R6               ; R6 holds adrres of first obj of the arrey ID2
+          MOV   Len , R7                ; Create the counter of the sum loops
+          CLR   R8                      ; Sum of ID1 numbers
+          CLR   R9                      ; Sum of ID2 numbers
+
+SUM       MOV   @R5+ , R10              ; define Runer as R10 - omly holds current number 
+          ADD   R10 , R8                ; R8 sums id1 numbers     
+          MOV   @R6+ , R10              ; define Runer as R10 - omly holds current number 
+          ADD   R10 , R9                ; R9 sums id2 numbers
+          DEC   R7                      ; Decrement until R7=0
+          JZ    Flags
+          JMP   SUM                     ; Restarts the loop, get out when finish to sum the arrey
+                                             
+Flags     MOV   #1 , R10                ; We want to set R10 to 0...01     
+          MOV   #1 , R11                ; We want to set R11 to 0...01
+          AND   R8 , R10                ; Set R10 to 0 if R8 even, set to 1 if odd
+          AND   R9 , R11                ; Set R11 to 0 if R9 even, set to 1 if odd
+
+COMP      CMP   R10 , R11               ; R11-R10
+          JNZ   op1                     ; Go to op1 if just one of R8\R9 is even and the other one is odd
+          JMP   op2                     ; Go to op2 if both R8 and R9 even\odd 
+          
+op1       CMP   R10 , R11               ; Compare R10 and R11, one of them is 1 and the other 0
+          JN    op3                     ; If R11-R10<0 (R10=1 > R11=0) go to op3
+          JMP   op4                     ; Else (R10=0 > R11=1) go to op4
+          
+op2       CMP   R7 , R10
+          JNZ   finish                  ; If both R8,R9 are odd finish the program(R4=0)
+          JMP   op5                     ; If both R8,R9 are even (R10=R11=0) go to op5
+
+op3       MOV   R9 , R4                 ; When R11=0 and R10=1 it means R9 is even and R8 is odd
+          JMP   finish 
+
+op4       MOV   R8 , R4                 ; When R11=1 and R10=0 it means R8 is even and R9 is odd
+          JMP   finish
+          
+op5       CMP   R8 , R9                 ; They both even, this check who is smaller
+          JN    op6                     ; If R8>R9 go to op6
+          MOV   R8 , R4                 ; R9>R8 and is even so set R4 to the sum of Id2
+          JMP   finish
+          
+op6       MOV    R9 , R4                ; R9<R8 and is even so set R4 to the sum of Id1
+
+finish    JMP   $
+;-------------------------------------------------------------------------------
+          COMMON  INTVEC                  ; Interrupt Vectors
+;-------------------------------------------------------------------------------
+          ORG     RESET_VECTOR            ; POR, ext. Reset
+          DW      Main
+          END

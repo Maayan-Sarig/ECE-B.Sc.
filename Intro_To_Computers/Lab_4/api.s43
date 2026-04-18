@@ -1,0 +1,98 @@
+#include  "bsp.h"
+
+             MODULE API
+             PUBLIC state_0,state_1,state_2,state_3,state_4            
+             EXTERN delay0_5sec,state,clear_flag,delay,ClrLEDs
+            
+             RSEG   CODE
+;-------------------------------------------------------------
+;             State0 Operator
+;-------------------------------------------------------------
+state_0      call   #ClrLEDs
+             ret
+;-------------------------------------------------------------
+;             State1 Operator
+;-------------------------------------------------------------
+state_1      mov.b  R8 , LEDsArrPort 
+             mov    #countdown , R9
+             push.w #PB0
+             call   #clear_flag
+      
+loop_s1      dec.b  LEDsArrPort
+             push.w #delay_cycles
+             call   #delay0_5sec
+             dec    R9
+             jnz    loop_s1
+             
+             mov.b  LEDsArrPort , R8
+             clr    state
+             ret
+          
+;-------------------------------------------------------------
+;             State2 Operator
+;-------------------------------------------------------------       
+state_2      mov.b  R10 , LEDsArrPort
+             mov    #countdown , R9
+             push   #PB1
+             call   #clear_flag           
+
+Loop_s2      push.w #delay_cycles
+             call   #delay0_5sec
+             rla.b  LEDsArrPort
+             adc.b  LEDsArrPort
+             decd.b R9
+             jnz    Loop_s2
+             
+finishL2     mov.b  LEDsArrPort , R10
+             clr    state
+             ret
+
+;-------------------------------------------------------------
+;             State3 Operator
+;-------------------------------------------------------------
+state_3      push   #PB2
+             call   #clear_flag
+             call   #ClrLEDs
+             
+st_1kh       mov.w  #cycle_counter , R15    
+loop_1kh     push.w #cycle_1kh
+             call   #delay
+             bis.b  #0x80 , PBsArrPortPWM
+             push.w #cycle_1kh 
+             call   #delay        
+             bic.b  #0x80 , PBsArrPortPWM
+             decd   R15
+             jge    loop_1kh
+          
+st_2kh       mov.w  #cycle_counter , R15       
+loop_2kh     push.w #cycle_2kh
+             call   #delay
+             bis.b  #0x80 , PBsArrPortPWM
+             push.w #cycle_2kh  
+             call   #delay        
+             bic.b  #0x80 , PBsArrPortPWM
+             dec    R15
+             jge    loop_2kh
+          
+             ret
+;-------------------------------------------------------------
+;             State4 Operator
+;-------------------------------------------------------------
+state_4      bis.b  R11 , PBsArrPortPWM
+             mov    #countdownRGB , R9
+             push   #PB3
+             call   #clear_flag
+             
+Loop_s4      push.w #delay_cycles
+             call   #delay0_5sec
+             add.b  #0x10 , PBsArrPortPWM
+             dec    R9
+             jnz    Loop_s4
+             
+             mov.b  PBsArrPortPWM , R11
+             clr    state
+             ret             
+
+;-------------------------------------------------------------
+             ENDMOD    
+             END

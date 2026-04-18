@@ -1,0 +1,145 @@
+#include  "msp430g2553.h"
+;---------------------------------------------------------------
+//==============================================================
+                MODULE    SW
+                PUBLIC    StateCheck, State1, State2, State4, State5, Rest, WaitUp, WaitDown, Wait25p, Wait75p, LoopOneCycle, L5sec
+                EXTERN    Delay100us, Delay1sec
+                RSEG      CODE
+
+StateCheck      MOV.B   &P1IN , R6            ; R6 holds p1in value
+                AND     #0x0F , R6            ; Define the msb byte of R6 to zero
+                
+                CMP     #1 , R6               ; Check if R6 = 1
+                JZ      CallState1            ; If R6 = 1 (only sw1 is on), go to state1
+                CMP     #2 , R6               ; Check if R6 = 2
+                JZ      CallState2            ; If R6 = 2 (only sw2 is on), go to state2
+                CMP     #4 , R6               ; Check if R6 = 4
+                JZ      CallState4            ; If R6 = 4 (only sw1 is on), go to state4
+                CMP     #5 , R6
+                JZ      CallState5
+                
+                call    #Rest                 ; If R6 is not for state1/2/4 to start go to start position
+                ret                           ; Return to the main loop
+                
+CallState1      call    #State1               ; Go to state1
+                ret                           ; Return to the main loop
+CallState2      call    #State2               ; Go to state2
+                ret                           ; Return to the main loop
+CallState4      call    #State4               ; Go to state4
+                ret                           ; Return to the main loop
+CallState5      call    #State5               ; Go to state5
+                ret                           ; Return to the main loop
+                
+State1          CLR     R4                    ; Set the LED counter to zero
+Loop1           MOV.B   R4 , &P2OUT           ; Light the LED the value of R4
+                                              ; If the LED finished counting to 2^8 restart the counting (there is carry)
+                CALL    #Delay1sec            ; Makes delay between LED illuminatioes so the human eye will notice the change
+                MOV.B   &P1IN , R6            
+                AND     #0x0F , R6            ; Check if the switches position hase changed
+                CMP     #1 , R6               ; If changed get out of state1
+                JNZ     end1 
+                INC     R4                    ; Increament the time LED counter
+                JMP     Loop1                 ; Staet another loop
+end1            ret                           ; Get out of state1
+
+
+State2          MOV.B   #0xFF , R5            ; Set the LED countr to 2^8
+Loop2           MOV.B   &P1IN , R7            
+                AND     #0x0F , R7            ; Check if the switches position hase changed
+                CMP     #2 , R7               ; If changed get out of state2
+                JNZ     end2
+                MOV.B   R5 , &P2OUT           ; Light the LED the value of R5
+                                              ; If the LED finished counting doun to zero restart the counting
+                CALL    #Delay1sec            ; Makes delay between LED illuminatioes so the human eye will notice the change
+                DEC     R5                    ; Decreament the time LED conter
+                JMP     Loop2                 ; Staet another loop
+end2            ret                           ; Get out of state2
+
+    
+State4          BIS.B   #0x80 , &P1OUT        ; Creates the high sign of the squer wave in p1.7     
+                CALL    #WaitUp               ; Define the time length on high sign of the wave
+                BIC.B   #0x80 , &P1OUT        ; Creates the low sign of the squer wave in p1.7  
+                CALL    #WaitDown             ; Define the time length on high sign of the wave
+                MOV.B   &P1IN , R8            
+                AND     #0x0F , R8            ; Check if the switches position hase changed
+                CMP     #4 , R8               ; If changed get out of state2
+                JNZ     end4
+                JMP     State4                ; Create another wave cycle
+end4            ret                           ; Get out of state4
+                
+
+State5          BIC.B   #0xFF , &P1OUT
+                MOV     #8000 , R4
+                CALL    #L5sec
+                
+                BIS.B   #0x80 , &P1OUT
+                MOV     #8000 , R4
+                CALL    #L5sec
+                JMP     State5
+
+L5sec           CALL    #LoopOneCycle
+                MOV.B   &P1IN , R8            
+                AND     #0x0F , R8            ; Check if the switches position hase changed
+                CMP     #5 , R8               ; If changed get out of state2
+                JNZ     end5
+                DEC     R4
+                JNZ     L5sec
+                RET          
+end5            POP     R9
+                RET  
+
+
+LoopOneCycle    XOR.B   #0x80 , &P1OUT       
+                CALL    #Wait25p
+                XOR.B   #0x80 , &P1OUT
+                CALL    #Wait75p
+                RET
+
+
+Rest            BIC.B   #0xFF , &P2OUT        ; Turn off all LED lights
+                BIC.B   #0x80 , &P1OUT        ; Set toe output of p1.7 to 0
+                ret                           ; Retuen to the main loop
+
+
+WaitUp          MOV.W   #249 , R13            ; Timer for high sign pulse width 261-262
+LoopUp          DEC     R13                   ; 260 loops because: 249 DC = 75%
+                JNZ     LoopUp
+                RET
+
+
+WaitDown        MOV.W   #76 , R14             ; Timer for the low pulse wave
+LoopDown        DEC     R14                   ; 82 loops because: 76 DC = 25%
+                JNZ     LoopDown
+                RET
+
+Wait25p         MOV.W   #49 , R13            ; 
+LoopHigh        DEC     R13                   ; 
+                JNZ     LoopHigh
+                RET
+
+
+Wait75p         MOV.W   #146 , R14             
+LoopLow         DEC     R14                    
+                JNZ     LoopLow
+                RET
+
+                ENDMOD 
+//==============================================================
+                MODULE  Delay
+                PUBLIC  Delay100us, Delay1sec
+                RSEG    CODE
+            
+Delay100us      mov.w   #33,R15               ; Timer of 100 usec 
+L1              dec.w   R15                     
+                jnz     L1                                    
+                ret
+            
+Delay1sec       mov.w   #10000,R13            ; Timer of 1 sec between LED illuminatioes   
+L2              call    #Delay100us           ; Use timer of 100 usec because of system limitation 
+                dec.w   R13                     
+                jnz     L2                                    
+                ret
+                
+                ENDMOD
+//=============================================================            
+                END

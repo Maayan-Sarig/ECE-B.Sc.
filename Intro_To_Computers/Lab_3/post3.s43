@@ -1,0 +1,29 @@
+#include  "msp430g2553.h"
+;-------------------------------------------------------------------------------          
+            NAME    Main
+            PUBLIC  Main
+            EXTERN  StateCheck, State1, State2, State4, State5
+            EXTERN  Delay100us, Delay1sec  
+
+            RSEG    CSTACK                  
+            RSEG    CODE                    
+Main        mov.w   #SFE(CSTACK),SP          
+StopWDT     mov.w   #WDTPW+WDTHOLD,&WDTCTL  
+           
+SetupP1     bic.b   #0xFF,&P1SEL            ; Set port1 to be I/O
+            bic.b   #0x0F,&P1DIR            ; Set p1.0-3 to be input (for the switches)
+            bis.b   #0x80,&P1DIR            ; Set p1.7 to be output for our squer signal
+            
+SetupP2     bic.b   #0xFF,&P2SEL            ; Set port1 to be I/O
+            bis.b   #0xFF,&P2DIR            ; Set p2.0-7 to be output for the LED
+           
+main_loop   call    #StateCheck             ; Loop to make the system ready for switch get turn on                                                         		  
+            jmp     main_loop
+           
+            nop                             ; for debugging - "if you got here then stop"   
+;*******************************************************************************
+           COMMON  INTVEC  ;Interrupt Vectors-Begins a common segment INTVEC 
+;*******************************************************************************
+           ORG     RESET_VECTOR   ; MSP430 RESET Vector
+           DW      Main                   
+           END     

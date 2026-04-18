@@ -1,0 +1,60 @@
+#include  "bsp.h"
+
+             NAME   MAIN
+             PUBLIC state,main
+             EXTERN SysConfig,ClrLEDs,delay,delay0_5sec
+             EXTERN PrintLEDs,,state_0,state_1, state_2,state_3,state_4
+             
+;----------------------------------------------------------------------------------
+             ORG    DataSegStart         ; Begins a DATA segment
+             
+state        DW   0                        ; state variable
+
+;-------------------------------------------------------------------------------------          
+             ;RSEG    CSTACK    ; shows to compiler where is the RAM populating limit
+                                ; can be ignored
+;-------------------------------------------------------------------------------------
+             ORG     CodeSegStart       ; Program Reset = Begins a CODE segment
+             
+main         mov.w   #StackTosStart,SP  ; Initialize stack pointer to the RAM end 
+             clr     state              ; set to idle state at the beginning
+             mov     #0xFF , R8
+             mov     #0x01 , R10
+             clr     R11
+             call    #SysConfig
+
+             
+;---------------------- FSM_loop -------------------------------------
+state0       cmp     #0x00 , state      ;check if state0           
+             jnz     state1
+             call    #state_0
+             bis.w   #CPUOFF+GIE , SR 
+
+state1       cmp     #0x01 , state      ;check if state1
+             jnz     state2
+             DINT             
+             call    #state_1           
+             EINT
+            
+state2       cmp     #0x02 , state      ;check if state2
+             jnz     state3  
+             DINT
+             call    #state_2           
+             EINT
+             
+state3       cmp     #0x03 , state      ;check if state2
+             jnz     state4 
+             DINT
+             call    #state_3           
+             EINT
+             jmp     state3
+             
+state4       cmp     #0x04 , state      ;check if state2
+             jnz     state0  
+             DINT
+             call    #state_4           
+             EINT
+             
+             jmp     state0
+      
+             END

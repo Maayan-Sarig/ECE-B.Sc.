@@ -1,0 +1,63 @@
+#include <msp430xG46x.h>     ; define controlled include file
+;-------------------------------------------------------------------------------
+          ORG 1100h
+;-------------------------------------------------------------------------------
+Id1       DW    0,6,5,1,1,7,7,6         ; 206511776
+Id2       DW    0,7,1,8,0,5,7,1         ; 207180571
+MaxOdd    DS16  8 
+Len       DW    8
+;-------------------------------------------------------------------------------
+          RSEG   CODE                        ; ORG   0x3100 - place program in 'CODE' segment in to Flash memory
+;-------------------------------------------------------------------------------                    
+Main        MOV   #Id1 , R4              ; R4 holds adrres of the first num of the arrey ID1
+            MOV   #Id2 , R5              ; R5 holds adrres of the first num of the arrey ID2
+            MOV   #MaxOdd , R6           ; R6 holds adrres of the first byte of goal array
+            MOV   Len , R7               ; R7 holds the len of the ID arrays
+            
+Flags       MOV   #1 , R8                ; We want to set R8 to 0...01 
+            MOV   #1 , R9                ; We want to set R9 to 0...01 
+            AND   @R4 , R8               ; Set R8 to 0 if R4 val is even, set to 1 if odd
+            AND   @R5 , R9               ; Set R9 to 0 if R5 val is even, set to 1 if odd
+            
+COMP        CMP   R8 , R9                ; R9-R8
+            JNZ   op2                    ; Go to op2 if just one of R4\R5 val is even and the other one is odd             
+            JMP   op1                    ; Go to op1 if both R4 and R5 vals even\odd  
+            
+op1         MOV   #0 , R10               ; Set R10 to 0
+            CMP   R8 , R10               ; R10-R8
+            JZ    InsertZ                ; Both R4 val and R5 val are even
+            JMP   op3                    ; Both R4 val and R5 val are odd
+  
+op2         CMP   R8 , R9                ; R9-R8
+            JN    InsertOdd              ; R4 val is odd and R5 val is even
+            MOV   @R5 , 0(R6)            ; Insert the only odd val
+            JMP   JumpForward            ; Skip to the next pair of numbers
+  
+op3         CMP   @R4 , 0(R5)            ; R5 val - R4 val
+            JGE   InsertM                ; R5 val > R4 val
+            MOV   @R4 , 0(R6)            ; Insert the bigger odd val
+            JMP   JumpForward            ; Skip to the next pair of numbers
+            
+InsertZ     MOV   #0 , 0(R6)             ; Both vals are even - insert 0
+            JMP   JumpForward            ; Skip to the next pair of numbers
+            
+InsertM     MOV   @R5 , 0(R6)            ; Both vals are odd - insert the bigger
+            JMP   JumpForward            ; Skip to the next pair of numbers
+            
+InsertOdd   MOV   @R4 , 0(R6)            ; Insert the only odd val
+            JMP   JumpForward            ; Skip to the next pair of numbers
+          
+JumpForward INCD  R4                     ; Skip to next val in ID1 array
+            INCD  R5                     ; Skip to next val in ID2 array
+            INCD  R6                     ; Skip to next byte of goal array           
+            DEC   R7                     ; Decreas the loop counter until 0
+            JZ    finish                 ; Loop countert reachrd 0 - go to finish
+            JMP   Flags                  ; If the loop doen't end repet the process
+
+finish      JMP   finish
+;-------------------------------------------------------------------------------
+          COMMON  INTVEC                  ; Interrupt Vectors
+;-------------------------------------------------------------------------------
+          ORG     RESET_VECTOR            ; POR, ext. Reset
+          DW      Main
+          END

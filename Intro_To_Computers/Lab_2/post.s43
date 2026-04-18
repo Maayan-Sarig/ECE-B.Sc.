@@ -1,0 +1,59 @@
+#include <msp430xG46x.h>     ; define controlled include file
+;-------------------------------------------------------------------------------
+
+;-------------------------------------------------------------------------------
+            ORG 1100h
+;-------------------------------------------------------------------------------
+Id1         DW    0,6,5,1,1,7,7,6         ; 206511776
+Id2         DW    0,7,1,8,0,5,7,1         ; 207180571
+ParityOnes1 DS16  8
+ParityOnes2 DS16  8
+;-------------------------------------------------------------------------------
+            RSEG  CSTACK
+            RSEG  CODE                        ; ORG   0x3100 - place program in 'CODE' segment in to Flash memory
+;-------------------------------------------------------------------------------                    
+Main        MOV   # SFE(CSTACK) , SP
+            PUSH  #ParityOnes1
+            PUSH  #8
+            PUSH  #Id1
+            CALL  #OnesFunc
+            
+            PUSH  #ParityOnes2
+            PUSH  #8
+            PUSH  #Id2
+            CALL  #OnesFunc
+            
+Loop        JMP   Loop
+
+OnesFunc    POP   R9
+            POP   R4    ; Id1 first num adress
+            POP   R5    ; IDsize = 8
+            POP   R6    ; ParityOnes1 target array first adress
+            PUSH  R9
+
+            
+ArrayL      CLR   R7        ; Ones counter
+            CMP   #0 , R5   ; Finish checking the intire array
+            JZ    finish
+            MOV   @R4 , R8
+            
+NumL        TST   R8
+            JZ    MoveFw
+            BIT   #1 , R8
+            ADC   R7
+            RRA   R8
+            JMP   NumL
+            
+MoveFw      MOV   R7 , 0(R6)
+            INCD  R4
+            INCD  R6
+            DEC   R5
+            JMP   ArrayL
+
+finish      RET
+;-------------------------------------------------------------------------------
+            COMMON  INTVEC                  ; Interrupt Vectors
+;-------------------------------------------------------------------------------
+            ORG     RESET_VECTOR            ; POR, ext. Reset
+            DW      Main
+            END
