@@ -1,5 +1,6 @@
-"""Headless runner: saves every figure produced by hold_all_experiments.py to PNG
-instead of popping up an interactive window (there is no display here)."""
+"""Run hold_scheduling_simulation.py and save every figure as PNG under figures/,
+instead of popping up plt.show() windows. Then just open the PNGs in VS Code's
+file explorer to view them (image preview is built in, no extension needed)."""
 import itertools
 import sys
 from pathlib import Path
@@ -25,11 +26,11 @@ def show_and_save(*args, **kwargs):
 plt.show = show_and_save
 
 sys.argv = [
-    "hold_all_experiments.py",
+    "hold_scheduling_simulation.py",
     "--profile", "quick",
     "--output-dir", "hold_results",
 ]
 
-import hold_all_experiments
+import hold_scheduling_simulation
 
-hold_all_experiments.main()
+hold_scheduling_simulation.main()
